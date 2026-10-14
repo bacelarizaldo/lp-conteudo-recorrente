@@ -60,6 +60,20 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
 details[open] .faqsign{transform:rotate(45deg)}
 html{scroll-behavior:smooth}
 </style>
+<style id="reveal-css">
+.js-reveal .rv-w{display:inline-block;white-space:nowrap}
+.js-reveal .rv-c{display:inline-block;opacity:0;filter:blur(10px);transform:translateY(.12em);transition:opacity .7s cubic-bezier(.2,.6,.2,1),filter .7s cubic-bezier(.2,.6,.2,1),transform .7s cubic-bezier(.2,.6,.2,1);transition-delay:var(--d,0ms);will-change:opacity,filter}
+.js-reveal .rv-in .rv-c{opacity:1;filter:blur(0);transform:none}
+.js-reveal .rv-f{opacity:0;filter:blur(12px);transform:translateY(18px);transition:opacity .9s cubic-bezier(.2,.6,.2,1),filter .9s cubic-bezier(.2,.6,.2,1),transform .9s cubic-bezier(.2,.6,.2,1);transition-delay:var(--d,0ms)}
+.js-reveal .rv-f.rv-in{opacity:1;filter:blur(0);transform:none}
+.js-reveal img.rv-f{transform:scale(1.04)}
+.js-reveal img.rv-f.rv-in{transform:none}
+.js-reveal header.rv-h{opacity:0;transform:translateY(-8px);transition:opacity .8s ease,transform .8s ease}
+.js-reveal header.rv-h.rv-in{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+.js-reveal .rv-c,.js-reveal .rv-f,.js-reveal header.rv-h{opacity:1 !important;filter:none !important;transform:none !important;transition:none !important}
+}
+</style>
 </head>
 <body>
 <div style="--ac: #E88F4F; width: 100%; background: #0B1017; color: #F2F2F2; font-family: 'Roboto', sans-serif; font-size: 17px; line-height: 1.6">
@@ -422,5 +436,92 @@ Google Drive · Pasta do mês
 </section>
 
 </div>
+<script id="reveal-js">
+(function () {
+  if (!('IntersectionObserver' in window)) return;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var root = document.documentElement;
+  root.classList.add('js-reveal');
+  if (reduce) return;
+
+  var CHAR_STEP = 22;   // ms entre letras
+  var CHAR_MAX = 1400;  // teto do atraso de um título
+  var FADE_STEP = 90;   // ms entre irmãos em cascata
+
+  // 1) Títulos: letra por letra
+  var heads = document.querySelectorAll('h1, h2, h3');
+  heads.forEach(function (h) {
+    var label = h.textContent.replace(/\s+/g, ' ').trim();
+    h.setAttribute('aria-label', label);
+    var i = 0;
+    var walker = document.createTreeWalker(h, NodeFilter.SHOW_TEXT, null);
+    var nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function (node) {
+      var frag = document.createDocumentFragment();
+      node.textContent.split(/(\s+)/).forEach(function (part) {
+        if (!part) return;
+        if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(' ')); return; }
+        var w = document.createElement('span');
+        w.className = 'rv-w';
+        w.setAttribute('aria-hidden', 'true');
+        Array.from(part).forEach(function (ch) {
+          var c = document.createElement('span');
+          c.className = 'rv-c';
+          c.textContent = ch;
+          c.style.setProperty('--d', Math.min(i * CHAR_STEP, CHAR_MAX) + 'ms');
+          i++;
+          w.appendChild(c);
+        });
+        frag.appendChild(w);
+      });
+      node.parentNode.replaceChild(frag, node);
+    });
+    h.dataset.rvChars = i;
+  });
+
+  // 2) Blocos: fade + desfoque, em cascata entre irmãos
+  var sel = [
+    'section .eyebrow', 'section p', 'section .btn', 'section .chip', 'section .card',
+    'section article', 'section .tile', 'section details', 'section ol > li',
+    'section img', 'section .g4 > div', 'section .g3 > div', 'section .seal',
+    'footer .g4 > div', 'footer > div:last-child'
+  ].join(',');
+  var blocks = Array.from(document.querySelectorAll(sel)).filter(function (el) {
+    if (el.closest('header')) return false;
+    if (el.closest('h1,h2,h3')) return false;
+    if (el.matches('.tile')) return true;
+    var p = el.parentElement;
+    while (p && p !== document.body) {
+      if (p.matches && p.matches(sel) && !p.matches('section img')) return false;
+      p = p.parentElement;
+    }
+    return true;
+  });
+  blocks.forEach(function (el) {
+    el.classList.add('rv-f');
+    var sibs = Array.from(el.parentElement.children).filter(function (s) { return blocks.indexOf(s) > -1; });
+    var idx = sibs.indexOf(el);
+    var base = 0;
+    var prevHead = el.parentElement.querySelector('h1,h2,h3');
+    if (prevHead && prevHead.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) {
+      base = Math.min((+prevHead.dataset.rvChars || 0) * CHAR_STEP * 0.5, 600);
+    }
+    el.style.setProperty('--d', (base + Math.min(idx, 8) * FADE_STEP) + 'ms');
+  });
+
+  // 3) Cabeçalho entra no carregamento
+  var header = document.querySelector('header');
+  if (header) { header.classList.add('rv-h'); requestAnimationFrame(function () { requestAnimationFrame(function () { header.classList.add('rv-in'); }); }); }
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('rv-in'); io.unobserve(e.target); }
+    });
+  }, { rootMargin: '0px 0px -12% 0px', threshold: 0.12 });
+  heads.forEach(function (h) { io.observe(h); });
+  blocks.forEach(function (b) { io.observe(b); });
+})();
+</script>
 </body>
 </html>
